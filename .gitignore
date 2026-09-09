@@ -1,0 +1,8 @@
+AGENTS.md
+
+.env
+.env.*
+*.env
+
+.private/
+secrets/
