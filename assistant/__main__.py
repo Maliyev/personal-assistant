@@ -4,6 +4,7 @@ from logging.handlers import RotatingFileHandler
 
 from assistant.app import Application
 from assistant.config import ROOT
+from assistant.terminal import TerminalChannel
 
 HELP = '/help, /approvals, /approve ID, /deny ID, /resume RUN_ID, /runs, /jobs, /memory, /exit'
 
@@ -28,15 +29,13 @@ def main():
             print(f'Initialized: {app.store.path}')
             return
         app.start_services()
+        terminal = TerminalChannel(app.notifications)
         print(HELP)
         if app.approvals.pending():
             print('Pending approvals were restored. Use /approvals.')
         while True:
             try:
-                while not app.notifications.empty():
-                    result = app.notifications.get_nowait()
-                    print(f'wakeup> {result.text}')
-                text = input('you> ').strip()
+                text = terminal.read().strip()
                 if not text:
                     continue
                 if text == '/exit':

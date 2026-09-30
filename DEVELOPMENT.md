@@ -43,3 +43,13 @@ network_access = true
 
 Restart Codex after updating its settings. Managed permissions may override local
 configuration; effective network access must be checked in the new session.
+
+## Scheduler terminal delivery fix
+
+The scheduler already activated the target agent through Runtime and queued its
+response. The terminal only consumed notifications before its blocking input(),
+so a finished job could remain invisible until the user submitted another line.
+TerminalChannel now runs input on a daemon reader thread and consumes notifications
+while waiting for the line, without another model call or another user message.
+Regression tests are provided in tests/test_terminal.py. They were not executed;
+the user is running tests manually.
