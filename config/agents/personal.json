@@ -1,0 +1,8 @@
+{
+  "id": "personal", "name": "Personal Agent", "tier": 2, "provider": "gemini",
+  "model": "gemini-2.5-flash-lite", "prompts": ["prompts/personal.md"],
+  "tools": ["current_time", "read_file", "write_note", "send_agent", "run_status", "schedule_wakeup"],
+  "context": {"max_characters": 60000, "transcript_characters": 40000, "tool_result_characters": 6000, "memory_layers": ["middle", "short", "active"]},
+  "memory": {"enabled": true, "threshold_characters": 24000, "model": "gemini-2.5-flash-lite", "provider": "gemini", "recent_messages": 6},
+  "model_settings": {}
+}

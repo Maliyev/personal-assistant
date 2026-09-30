@@ -1,0 +1,8 @@
+{
+  "paths": {"database": "data/v0.db", "workspace": "workspace", "agent_seeds": "config/agents"},
+  "runtime": {"max_tool_steps": 10, "request_timeout_seconds": 60, "background_workers": 2, "background_queue_limit": 8},
+  "retry": {"max_attempts": 4, "max_wait_seconds": 30, "base_backoff_seconds": 1, "max_backoff_seconds": 10, "jitter": true},
+  "providers": {"gemini": {"api_key_env": "GEMINI_API_KEY", "base_url": "https://generativelanguage.googleapis.com/v1beta"}},
+  "scheduler": {"tick_seconds": 5},
+  "memory": {"periodic_seconds": 3600, "slow_enabled": false}
+}
