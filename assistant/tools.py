@@ -88,9 +88,10 @@ class ToolRuntime:
                 approval = self.store.one('SELECT * FROM approvals WHERE tool_call_id=?', (tool_id,))
                 if approval is None:
                     with self.store.connect() as connection:
-                        connection.execute("INSERT INTO approvals (tool_call_id) VALUES (?)", (tool_id,))
+                        approval_id = connection.execute("INSERT INTO approvals (tool_call_id) VALUES (?)", (tool_id,)).lastrowid
                         connection.execute("UPDATE tool_calls SET status='waiting' WHERE id=?", (tool_id,))
-                    return tool_id, 'waiting', {'approval_required': True}, tool.return_mode
+                    return tool_id, 'waiting', {'approval_required': True, 'approval_id': approval_id,
+                                              'approval_created': True}, tool.return_mode
                 if approval['status'] == 'pending':
                     return tool_id, 'waiting', {'approval_required': True}, tool.return_mode
                 if approval['status'] == 'denied':

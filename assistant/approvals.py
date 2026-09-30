@@ -1,3 +1,15 @@
+from dataclasses import dataclass
+
+
+@dataclass
+class ApprovalRequest:
+    id: int
+    run_id: str
+    agent_id: str
+    tool_name: str
+    arguments: dict
+
+
 class ApprovalService:
     def __init__(self, store):
         self.store = store

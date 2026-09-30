@@ -1,4 +1,5 @@
 import argparse
+import json
 import logging
 from logging.handlers import RotatingFileHandler
 
@@ -7,6 +8,12 @@ from assistant.config import ROOT
 from assistant.terminal import TerminalChannel
 
 HELP = '/help, /approvals, /approve ID, /deny ID, /resume RUN_ID, /runs, /jobs, /memory, /exit'
+
+
+def print_approval(request):
+    print(f'\napproval> #{request.id} — agent={request.agent_id}, tool={request.tool_name}\n'
+          f'Arguments: {json.dumps(request.arguments, ensure_ascii=False)}\n'
+          f'/approve {request.id} — approve; /deny {request.id} — deny\n', flush=True)
 
 
 def print_result(app, result):
@@ -23,7 +30,7 @@ def main():
     log_path.parent.mkdir(parents=True, exist_ok=True)
     handler = RotatingFileHandler(log_path, maxBytes=2_000_000, backupCount=3, encoding='utf-8')
     logging.basicConfig(level=logging.INFO, handlers=[handler], format='%(asctime)s %(levelname)s %(name)s %(message)s')
-    app = Application()
+    app = Application(on_approval=print_approval)
     try:
         if options.init_only:
             print(f'Initialized: {app.store.path}')

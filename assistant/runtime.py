@@ -2,6 +2,7 @@ import json
 import logging
 from dataclasses import asdict, dataclass
 from threading import Lock
+from assistant.approvals import ApprovalRequest
 
 from assistant.models import Message, ToolCall, restore_message
 
@@ -18,13 +19,14 @@ class RunResult:
 
 
 class Runtime:
-    def __init__(self, store, agents, context, gateway, tools, max_tool_steps, tier1_enabled=True):
+    def __init__(self, store, agents, context, gateway, tools, max_tool_steps, tier1_enabled=True, on_approval=None):
         self.store, self.agents, self.context = store, agents, context
         self.gateway, self.tools = gateway, tools
         if type(max_tool_steps) is not int or not 1 <= max_tool_steps <= 10:
             raise ValueError('V0 permits 1 to 10 tool steps')
         self.max_tool_steps = max_tool_steps
         self.tier1_enabled = tier1_enabled
+        self.on_approval = on_approval
         self._locks = {}
         self._locks_guard = Lock()
 
@@ -102,6 +104,13 @@ class Runtime:
                 if status == 'waiting':
                     state['messages'] = [asdict(message) for message in messages]
                     self.store.finish(run_id, 'waiting', state=state)
+                    # Publish only after the run can safely be resumed by the user.
+                    if result.get('approval_created') and self.on_approval:
+                        try:
+                            self.on_approval(ApprovalRequest(result['approval_id'], run_id,
+                                                            profile.id, call.name, call.arguments))
+                        except Exception:
+                            logger.exception('Approval notification failed run=%s', run_id)
                     return RunResult('Tool requires approval. Use /approvals, then /approve ID or /deny ID.',
                                      run_id, session_id, 'waiting')
                 messages.append(self.context.tool_result(profile, call.name, result, call.id))

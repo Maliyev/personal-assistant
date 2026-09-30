@@ -21,7 +21,7 @@ logger = logging.getLogger(__name__)
 
 
 class Application:
-    def __init__(self, root=ROOT, config=None, adapters=None):
+    def __init__(self, root=ROOT, config=None, adapters=None, on_approval=None):
         self.root = root
         self.config = config or load_config(root / 'config/config.json')
         load_env(root / '.env')
@@ -39,7 +39,8 @@ class Application:
         self.tools = ToolRuntime(self.store, self.registry)
         self.runtime = Runtime(self.store, self.agents, self.context, self.gateway, self.tools,
                                self.config['runtime']['max_tool_steps'],
-                               tier1_enabled=self.config['runtime'].get('tier1_enabled', True))
+                               tier1_enabled=self.config['runtime'].get('tier1_enabled', True),
+                               on_approval=on_approval)
         self.background = BackgroundWork(self.config['runtime']['background_workers'],
                                          self.config['runtime']['background_queue_limit'])
         self.runtime.background = self.background
