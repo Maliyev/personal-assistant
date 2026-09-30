@@ -1,6 +1,9 @@
+import json
+from dataclasses import asdict
 from datetime import datetime, timezone
 
 from assistant.background import BackgroundBusy
+from assistant.models import ScheduledWakeup
 
 
 def utc_time(value):
@@ -11,9 +14,10 @@ def utc_time(value):
 
 
 class Scheduler:
-    def __init__(self, store, runtime, background, on_response=None):
+    def __init__(self, store, runtime, background, on_response=None, clock=None):
         self.store, self.runtime, self.background = store, runtime, background
         self.on_response = on_response
+        self.clock = clock or (lambda: datetime.now(timezone.utc))
 
     def schedule(self, agent_id, session_id, payload, at):
         self.runtime.agents.get(agent_id)
@@ -21,13 +25,16 @@ class Scheduler:
         if not session or session['participant_b_id'] != agent_id:
             raise ValueError('Scheduled target must match the session target')
         instant = utc_time(at)
+        now = self.clock().astimezone(timezone.utc)
+        if datetime.fromisoformat(instant) <= now:
+            raise ValueError(f'Wakeup time must be in the future. Current UTC time: {now.isoformat()}')
         job_id = self.store.execute('''INSERT INTO scheduled_jobs
             (target_agent_id,session_id,payload,schedule,next_run_at) VALUES (?,?,?,'once',?)''',
             (agent_id, session_id, payload, instant))
         return {'job_id': job_id, 'next_run_at': instant}
 
     def tick(self, now=None):
-        instant = utc_time(now) if now else datetime.now(timezone.utc).isoformat(timespec='microseconds')
+        instant = utc_time(now) if now else self.clock().astimezone(timezone.utc).isoformat(timespec='microseconds')
         jobs = self.store.rows("SELECT * FROM scheduled_jobs WHERE status='pending' AND next_run_at<=? ORDER BY id", (instant,))
         submitted = []
         for job in jobs:
@@ -49,7 +56,10 @@ class Scheduler:
                 if self.store.one("SELECT id FROM runs WHERE session_id=? AND status='waiting'", (session_id,)):
                     self.store.execute("UPDATE scheduled_jobs SET status='pending' WHERE id=?", (job['id'],))
                     return
-                current_id = self.store.message(session_id, 'system', 'scheduler', job['payload'])
+                event = ScheduledWakeup(job['id'], job['next_run_at'],
+                    self.clock().astimezone(timezone.utc).isoformat(timespec='microseconds'), job['payload'])
+                current_id = self.store.message(session_id, 'system', 'scheduler',
+                    json.dumps(asdict(event), ensure_ascii=False))
                 result = self.runtime.activate(job['target_agent_id'], session_id, current_id)
                 self.store.execute('UPDATE scheduled_jobs SET status=? WHERE id=?', (result.status, job['id']))
             if self.on_response:

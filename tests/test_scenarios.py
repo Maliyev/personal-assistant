@@ -1,6 +1,7 @@
 import json
 import tempfile
 import unittest
+from datetime import datetime, timezone
 from pathlib import Path
 from threading import Event, Lock
 
@@ -140,6 +141,7 @@ class ScenarioTests(unittest.TestCase):
     def test_one_time_wakeup_runs_normal_runtime_and_is_not_duplicated(self):
         app = self.app(lambda request: LLMResponse(text='Wakeup done'))
         session = app.store.session()
+        app.scheduler.clock = lambda: datetime(2026, 1, 1, 7, 59, tzinfo=timezone.utc)
         scheduled = app.scheduler.schedule('personal', session, 'reminder', '2026-01-01T12:00:00+04:00')
         jobs = app.scheduler.tick('2026-01-01T08:00:01Z')
         self.assertEqual(len(jobs), 1)

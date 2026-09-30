@@ -53,3 +53,14 @@ TerminalChannel now runs input on a daemon reader thread and consumes notificati
 while waiting for the line, without another model call or another user message.
 Regression tests are provided in tests/test_terminal.py. They were not executed;
 the user is running tests manually.
+
+## Scheduler activation semantics
+
+Removed the previous uncommitted rescheduling heuristic and relative-delay changes.
+New job creation rejects timestamps at or before now. Due jobs still execute after
+downtime. Scheduler persists a ScheduledWakeup event with its job ID, scheduled
+time, actual trigger time and payload. Context represents it as an event message
+with event_type=scheduled_wakeup, including in history, and explicitly tells the
+agent to execute the task now rather than treat it as another user scheduling request.
+No content classifier or payload equality check is used. New regression tests in
+tests/test_scheduler.py have not been run; the user handles test execution.

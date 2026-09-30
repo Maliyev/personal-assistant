@@ -1,6 +1,6 @@
 """Provider-independent model contracts."""
 from dataclasses import dataclass, field
-from typing import Any
+from typing import Any, Literal
 
 
 @dataclass
@@ -19,6 +19,17 @@ class Message:
     tool_call_id: str = ''
     # Adapter-owned opaque continuation metadata (e.g. signed model parts).
     provider_data: dict = field(default_factory=dict)
+    # Runtime input origin, independent of the provider's supported chat roles.
+    event_type: Literal['scheduled_wakeup'] | None = None
+
+
+@dataclass
+class ScheduledWakeup:
+    job_id: int
+    scheduled_at: str
+    triggered_at: str
+    payload: str
+    event_type: Literal['scheduled_wakeup'] = 'scheduled_wakeup'
 
 
 @dataclass

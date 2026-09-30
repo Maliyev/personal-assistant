@@ -62,7 +62,7 @@ class Application:
             lambda execution, **arguments: self.runtime.delegate(execution, **arguments), return_mode='async_result'))
         self.registry.register(ToolDefinition('run_status', 'Inspect the persisted status and latest session result of a delegated run.',
             object_schema({'run_id': text}, ['run_id']), self.runtime.run_status))
-        self.registry.register(ToolDefinition('schedule_wakeup', 'Schedule a one-time future activation of this agent in this session; at must be ISO 8601 with a timezone offset.',
+        self.registry.register(ToolDefinition('schedule_wakeup', 'Schedule a one-time future activation of this agent in this session; at must be ISO 8601 with a timezone offset and strictly later than the current time. Past or present times return an error.',
             object_schema({'message': text, 'at': text}, ['message', 'at']),
             lambda execution, message, at: self.scheduler.schedule(execution['profile'].id,
                 execution['session_id'], message, at)))
