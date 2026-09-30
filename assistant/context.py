@@ -1,11 +1,12 @@
 import json
 import logging
 from dataclasses import asdict
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 from assistant.models import LLMRequest, Message
 
 logger = logging.getLogger(__name__)
+BAKU_TIMEZONE = timezone(timedelta(hours=4))
 
 
 class ContextOverflow(ValueError):
@@ -41,7 +42,10 @@ class ContextService:
             raise ValueError('Current input is not in the session')
         prefix = '\n\n'.join((self.root / path).read_text(encoding='utf-8') for path in profile.prompts)
         current_input = self.input_message(current)
-        activation = '[Current activation]\nCurrent UTC time: ' + datetime.now(timezone.utc).isoformat()
+        now = datetime.now(timezone.utc)
+        activation = '[Current activation]\nCurrent UTC time: ' + now.isoformat()
+        if profile.tier == 2:
+            activation += '\nCurrent local time: ' + now.astimezone(BAKU_TIMEZONE).strftime('%Y-%m-%d %H:%M:%S') + ' UTC+4 (Asia/Baku)'
         if current_input.event_type == 'scheduled_wakeup':
             activation += '''\nInput type: scheduled_wakeup. This is a scheduler event, not a new user request.
 The scheduled time has arrived. Execute the saved payload NOW and deliver its result.

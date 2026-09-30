@@ -17,6 +17,9 @@ def load_env(path):
 def load_config(path=None):
     path = Path(path or ROOT / 'config' / 'config.json')
     config = json.loads(path.read_text(encoding='utf-8-sig'))
+    config['runtime'].setdefault('tier1_enabled', True)
+    if type(config['runtime']['tier1_enabled']) is not bool:
+        raise ValueError('runtime.tier1_enabled must be boolean')
     positive = {
         'runtime': ('max_tool_steps', 'request_timeout_seconds', 'background_workers', 'background_queue_limit'),
         'retry': ('max_attempts', 'max_wait_seconds', 'base_backoff_seconds', 'max_backoff_seconds'),

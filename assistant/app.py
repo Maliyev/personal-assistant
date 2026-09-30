@@ -38,7 +38,8 @@ class Application:
         self.gateway = ProviderGateway(self.store, adapters, self.config['retry'])
         self.tools = ToolRuntime(self.store, self.registry)
         self.runtime = Runtime(self.store, self.agents, self.context, self.gateway, self.tools,
-                               self.config['runtime']['max_tool_steps'])
+                               self.config['runtime']['max_tool_steps'],
+                               tier1_enabled=self.config['runtime'].get('tier1_enabled', True))
         self.background = BackgroundWork(self.config['runtime']['background_workers'],
                                          self.config['runtime']['background_queue_limit'])
         self.runtime.background = self.background

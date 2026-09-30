@@ -18,12 +18,13 @@ class RunResult:
 
 
 class Runtime:
-    def __init__(self, store, agents, context, gateway, tools, max_tool_steps):
+    def __init__(self, store, agents, context, gateway, tools, max_tool_steps, tier1_enabled=True):
         self.store, self.agents, self.context = store, agents, context
         self.gateway, self.tools = gateway, tools
         if type(max_tool_steps) is not int or not 1 <= max_tool_steps <= 10:
             raise ValueError('V0 permits 1 to 10 tool steps')
         self.max_tool_steps = max_tool_steps
+        self.tier1_enabled = tier1_enabled
         self._locks = {}
         self._locks_guard = Lock()
 
@@ -38,6 +39,8 @@ class Runtime:
             if waiting:
                 raise ValueError(f"Resolve pending approval for run {waiting['id']} before continuing this session")
             current_id = self.store.message(session_id, 'user', 'magerram', text)
+            if not self.tier1_enabled:
+                return self.activate('personal', session_id, current_id)
             routed = self.activate('tier1', session_id, current_id)
             if routed.route_to:
                 return self.activate(routed.route_to, session_id, current_id, parent_run_id=routed.run_id)

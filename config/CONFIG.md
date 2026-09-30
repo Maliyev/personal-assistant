@@ -10,6 +10,7 @@ No third-party Python packages are required.
 | paths.workspace | string, `workspace` | Filesystem root for agent files and daily Markdown logs. |
 | paths.agent_seeds | string, `config/agents` | Directory of initial JSON profiles. Seeded only if an agent ID is absent in SQLite. |
 | runtime.max_tool_steps | integer, 10 | 1–10; maximum executed tool calls per activation, shared by all agents. |
+| runtime.tier1_enabled | boolean, true | false bypasses Tier 1 for user messages and directly activates Personal Agent in the same main session. Restart the application after changing it. Scheduled activations retain their explicit target. |
 | runtime.request_timeout_seconds | number, 60 | Positive HTTP timeout per attempt. |
 | runtime.background_workers | integer, 2 | Positive worker count for expert and memory work. Increasing it permits more simultaneous API calls. |
 | runtime.background_queue_limit | integer, 8 | Positive maximum submitted background jobs, including running jobs. |
