@@ -21,6 +21,8 @@ def load_config(path=None):
         'runtime': ('max_tool_steps', 'request_timeout_seconds', 'background_workers', 'background_queue_limit'),
         'retry': ('max_attempts', 'max_wait_seconds', 'base_backoff_seconds', 'max_backoff_seconds'),
         'scheduler': ('tick_seconds',),
+        'memory': ('periodic_seconds',),
+        'workspace': ('max_read_bytes',),
     }
     for section, fields in positive.items():
         for field in fields:
@@ -36,6 +38,12 @@ def load_config(path=None):
         raise ValueError('V0 permits at most 10 tool steps')
     if type(config['retry']['jitter']) is not bool:
         raise ValueError('retry.jitter must be boolean')
+    if type(config['memory']['slow_enabled']) is not bool:
+        raise ValueError('memory.slow_enabled must be boolean')
+    if config['memory']['slow_enabled']:
+        raise ValueError('Slow memory is a V0 stub; keep slow_enabled=false')
+    if type(config['workspace']['max_read_bytes']) is not int:
+        raise ValueError('workspace.max_read_bytes must be an integer')
     for field in ('database', 'workspace', 'agent_seeds'):
         if not isinstance(config['paths'][field], str) or not config['paths'][field]:
             raise ValueError(f'paths.{field} must be a nonempty string')

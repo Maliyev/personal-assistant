@@ -1,6 +1,6 @@
 {
   "id": "tier1", "name": "Fast router", "tier": 1, "provider": "gemini",
-  "model": "gemini-2.5-flash-lite", "prompts": ["prompts/router.md"],
+  "model": "gemini-3.1-flash-lite", "prompts": ["prompts/router.md"],
   "tools": ["escalate", "current_time"],
   "context": {"max_characters": 12000, "transcript_characters": 2000, "tool_result_characters": 2000, "memory_layers": ["active", "short"]},
   "memory": {"enabled": false}, "model_settings": {}

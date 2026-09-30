@@ -1,10 +1,97 @@
 # Personal Assistant V0
 
-Новая реализация по `00_START_HERE.md` и восьми спецификациям. Прежний чат удалён.
-Статус разработки и команды запуска будут обновляться по мере реализации.
+Реализация с нуля по `00_START_HERE.md` и восьми спецификациям.
 
-Python 3.11+. Первые проверки: `python -m unittest discover -s tests -v`.
-Новая база: `data/v0.db`; старый `data/assistant.db` не используется.
+```text
+Terminal → Tier 1 → Personal Agent
+                     ├─ Context Service + Memory Manager
+                     ├─ Provider Gateway → Gemini REST
+                     ├─ Tool Registry / Runtime → Approval Policy
+                     ├─ background expert sessions
+                     └─ persistent one-time scheduler
+                         SQLite + workspace files
+```
 
-Профили из `config/agents/` загружаются в SQLite только при первом запуске.
-После этого источник истины — SQLite; изменения выполняются через AgentManager.
+Python 3.11+, сторонние зависимости не нужны.
+
+## Запуск
+
+В `.env` добавь `GEMINI_API_KEY=...` (образец — `.env.example`).
+Не публикуй этот файл. Модель по умолчанию — `gemini-3.1-flash-lite`;
+доступность конкретной модели зависит от аккаунта Gemini.
+
+```powershell
+python -m assistant --init-only
+python -m assistant
+```
+
+Конфигурация: [config/CONFIG.md](config/CONFIG.md).
+Профили из `config/agents/` создаются в SQLite только при первом запуске;
+после этого SQLite — источник истины. Для изменения профиля используй
+`AgentManager.update(profile)`; редактирование seed-файла не перезаписывает его.
+
+Команды: `/help`, `/approvals`, `/approve ID`, `/deny ID`, `/resume RUN_ID`,
+`/runs`, `/jobs`, `/memory`, `/exit`. `/resume` позволяет продолжить flow,
+если approval уже разрешён, но процесс завершился до продолжения.
+
+Примеры:
+
+- «Который час?» — Tier 1 и `current_time`.
+- «Я сейчас работаю над X» — эскалация к Personal Agent.
+- «Создай заметку notes/test.md с текстом hello» — ожидание approval.
+- «Отправь эксперту expert задачу …» — фоновые run/session IDs.
+- «Проверь run …» — статус и последний результат внутренней сессии.
+- «Вернись к этой теме в 2026-10-01T15:00:00+04:00» — одноразовый wakeup.
+
+## Проверки
+
+```powershell
+python -m unittest discover -s tests -v
+python -m assistant.smoke
+```
+
+Unit/scenario-тесты работают без сети и API-ключа, с контролируемыми ответами
+провайдера. Smoke отдельно вызывает реальный Gemini, расходует API-вызовы и
+хранит свой trace в отдельной `data/smoke-*.db`.
+
+## Состояние и ограничения V0
+
+Реализованы профили агентов, одна основная сессия, внутренние сессии,
+связанные runs, история, API/tool trace, ограниченный retry, инструменты,
+подтверждения с продолжением после перезапуска, Fast Memory после ответа,
+expert light compaction, фоновые эксперты и одноразовые wakeups.
+
+История не удаляется при compaction. Memory Manager выбирает сохраняемые
+raw-сообщения и обновляет active/short либо экспертный working summary.
+Последние `recent_messages` защищены; новый ввод после snapshot сохраняется.
+Неверный результат memory-вызова оставляет прежнюю память и transcript.
+
+Все данные новой реализации: `data/v0.db`; прежняя `data/assistant.db`
+не используется. Логи: `data/logs/v0.log`. Файлы: `workspace/`, подробные
+memory/activity-записи: `workspace/activity/YYYY-MM-DD.md` (UTC).
+`write_note` создаёт новый `.md` файл с подтверждением и не перезаписывает его.
+
+Один процесс приложения одновременно. Scheduler работает, пока приложение
+запущено; просроченные pending jobs подхватываются после запуска. Recurrence
+пока не исполняется, поле schedule оставлено для дальнейшего расширения.
+После аварийного завершения running jobs/runs помечаются failed;
+неопределённые внешние эффекты автоматически не повторяются. Pending approvals
+сохраняются. Для основной сессии сначала нужно разрешить pending approval,
+после этого продолжать диалог.
+
+Фоновый эксперт сохраняет результат в своей сессии и сообщение в сессии
+вызывающего агента. Доступность Personal Agent проверяется без ожидания эксперта.
+Одноразовые wakeup-ответы показываются в терминале перед следующим вводом;
+отдельной доставки вне терминала пока нет. `/exit` дожидается уже начатой
+фоновой работы. Контекст ограничивается символами, а не точным tokenizer.
+
+Slow Memory, RAG, браузер, мессенджеры, PC control и остальные V1-интеграции
+пока не реализованы. Полноценное качество памяти и маршрутизации зависит
+от модели; offline-тесты проверяют механику, не её рассуждения.
+
+## Проверено в этой реализации
+
+Offline-сценарии и запуск `--init-only` проверены. Live smoke с прежней
+`gemini-2.5-flash-lite` получил HTTP 404, корректно сохранил failure и не
+повторял постоянную ошибку. По указанию пользователя default установлен
+на `gemini-3.1-flash-lite`; его live-проверка пока не выполнена.

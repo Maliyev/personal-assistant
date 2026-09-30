@@ -17,13 +17,26 @@ class AgentProfile:
     model_settings: dict = field(default_factory=dict)
 
     def __post_init__(self):
-        if self.tier not in (1, 2, 3):
+        if type(self.tier) is not int or self.tier not in (1, 2, 3):
             raise ValueError('V0 supports tiers 1, 2 and 3')
         for key in ('max_characters', 'tool_result_characters', 'transcript_characters'):
             if type(self.context.get(key)) is not int or self.context[key] <= 0:
                 raise ValueError(f'Agent {self.id}: context.{key} must be a positive integer')
         if not all(isinstance(value, str) for value in self.prompts + self.tools):
             raise ValueError('Agent prompts and tools must be lists of strings')
+        if not all(isinstance(value, str) and value for value in (self.id, self.name, self.provider, self.model)):
+            raise ValueError('Agent identity/provider/model fields must be nonempty strings')
+        if any(layer not in ('active', 'short', 'middle', 'long') for layer in self.context.get('memory_layers', [])):
+            raise ValueError('Unknown memory layer')
+        if type(self.memory.get('enabled', False)) is not bool:
+            raise ValueError('memory.enabled must be boolean')
+        if self.memory.get('enabled'):
+            for key in ('threshold_characters', 'recent_messages'):
+                if type(self.memory.get(key)) is not int or self.memory[key] <= 0:
+                    raise ValueError(f'memory.{key} must be a positive integer')
+            for key in ('provider', 'model'):
+                if not isinstance(self.memory.get(key), str) or not self.memory[key]:
+                    raise ValueError(f'memory.{key} must be a nonempty string')
 
 
 class AgentManager:

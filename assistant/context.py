@@ -58,7 +58,7 @@ class ContextService:
                 used += len(row['content'])
                 if used > profile.context['transcript_characters']:
                     break
-                is_caller = (row['sender_type'], row['sender_id']) == (
+                is_caller = row['sender_type'] == 'system' or (row['sender_type'], row['sender_id']) == (
                     session['participant_a_type'], session['participant_a_id'])
                 history.insert(0, Message('user' if is_caller else 'assistant', row['content']))
         fixed = [Message('user', current['content']), *(continuation or [])]

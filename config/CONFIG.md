@@ -23,6 +23,7 @@ No third-party Python packages are required.
 | scheduler.tick_seconds | number, 5 | Positive polling interval while the terminal is running. |
 | memory.periodic_seconds | number, 3600 | Positive interval between memory maintenance checks. |
 | memory.slow_enabled | boolean, false | Reserved stub; deep consolidation is not implemented. |
+| workspace.max_read_bytes | positive integer, 100000 | Maximum bytes read from one file before tool-result insertion limits. |
 
 Agent JSON fields:
 
@@ -31,7 +32,7 @@ Agent JSON fields:
 | id, name | strings | Stable ID and display name. |
 | tier | integer, 1 / 2 / 3 | Router, Personal Agent or expert. Tier 4 is outside V0. |
 | provider | string, `gemini` | Registered provider adapter name. |
-| model | string, `gemini-2.5-flash-lite` | Provider model ID. Availability depends on the account/provider; tune before live use. |
+| model | string, `gemini-3.1-flash-lite` | Provider model ID selected by the user. Live verification is pending. |
 | prompts | list of paths | UTF-8 prompt files relative to the project root. |
 | tools | list of names | Explicit tool allowlist; unavailable tools are rejected. |
 | context.max_characters | positive integer, 12000 / 60000 / 50000 | Hard cap on serialized generic request context. Character counts are conservative application limits, not exact token counts. |
@@ -40,10 +41,14 @@ Agent JSON fields:
 | context.memory_layers | list, router active/short; personal middle/short/active; expert empty | Only listed memory layers enter context. Expert uses its session working summary. |
 | memory.enabled | boolean, false / true / true | Enable post-response and periodic maintenance. |
 | memory.threshold_characters | positive integer, personal 24000 / expert 20000 | Trigger maintenance after response when active transcript crosses this size. |
-| memory.provider, memory.model | strings, `gemini`, `gemini-2.5-flash-lite` | Separate model for maintenance. Maintenance spends additional API calls. |
+| memory.provider, memory.model | strings, `gemini`, `gemini-3.1-flash-lite` | Separate model for maintenance. Maintenance spends additional API calls. |
 | memory.recent_messages | positive integer, 6 | Recent raw messages protected during memory processing. |
 | model_settings | object, empty | Generic keys: temperature, max_output_tokens, response_json. Adapter maps these to its API. Unsupported keys fail explicitly. |
 
 SQLite agent profiles are the source of truth after seeding. Editing seed files does
 not overwrite existing profiles. Use `AgentManager.update(profile)` to change an
 existing profile; use a fresh database to exercise new seeds from scratch.
+
+Tool validation supports the V0-owned JSON Schema subset: object, string, integer,
+boolean, array, properties, required, additionalProperties, enum, minLength,
+maxLength, minimum and items. Arbitrary third-party schemas are outside V0.

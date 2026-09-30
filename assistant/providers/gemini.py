@@ -6,6 +6,7 @@ Error policy: https://ai.google.dev/gemini-api/docs/troubleshooting
 import json
 import os
 import socket
+from http.client import HTTPException
 from urllib.error import HTTPError, URLError
 from urllib.parse import quote, urlparse
 from urllib.request import Request, urlopen
@@ -87,7 +88,7 @@ class GeminiAdapter:
                     404: 'not_found', 408: 'timeout', 429: 'rate_limit'}.get(error.code, 'provider_error')
             retryable = error.code in (408, 429) or 500 <= error.code < 600
             raise ProviderError(kind, f'Gemini HTTP {error.code}', retryable, raw) from error
-        except (URLError, TimeoutError, socket.timeout, ConnectionError) as error:
+        except (URLError, TimeoutError, socket.timeout, ConnectionError, HTTPException, OSError) as error:
             raise ProviderError('network', 'Gemini connection failed', True) from error
         except (ValueError, UnicodeDecodeError) as error:
             raise ProviderError('invalid_response', 'Gemini response was not JSON') from error

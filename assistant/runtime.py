@@ -114,13 +114,59 @@ class Runtime:
                 state['terminal_results'].append(result)
             state['calls'] = []
             if not state['requires_resume']:
-                text = state['last_text'] or json.dumps(state['terminal_results'], ensure_ascii=False)
+                summary = json.dumps(state['terminal_results'], ensure_ascii=False)
+                text = (state['last_text'] + '\n' if state['last_text'] else '') + summary
                 return self._complete(profile, session_id, run_id, text)
 
     def _complete(self, profile, session_id, run_id, text):
         self.store.message(session_id, 'agent', profile.id, text)
         self.store.finish(run_id)
         return RunResult(text, run_id, session_id)
+
+    def delegate(self, execution, target_agent, message, session_id=None):
+        target = self.agents.get(target_agent)
+        if target.tier != 3:
+            raise ValueError('Delegation target must be an expert')
+        caller = execution['profile'].id
+        internal = self.store.session('agent', caller, target_agent, session_id)
+        child = self.store.run(internal, target_agent, execution['run_id'])
+
+        def work():
+            try:
+                with self.session_lock(internal):
+                    if self.store.one("SELECT id FROM runs WHERE session_id=? AND status='waiting'", (internal,)):
+                        raise ValueError('Expert session is waiting for approval')
+                    current = self.store.message(internal, 'agent', caller, message)
+                    result = self.activate(target_agent, internal, current, run_id=child)
+                with self.session_lock(execution['session_id']):
+                    self.store.message(execution['session_id'], 'agent', target_agent,
+                        f"[Expert run {child}; session {internal}; {result.status}]\n{result.text}")
+                if hasattr(self, 'after_response'):
+                    self.after_response(result)
+            except Exception as error:
+                self.store.finish(child, 'failed', str(error))
+                self.store.message(execution['session_id'], 'agent', target_agent,
+                                   f'[Expert run {child} failed]\n{error}')
+                logger.exception('Expert failed run=%s', child)
+        try:
+            self.background.submit(work)
+        except Exception as error:
+            self.store.finish(child, 'failed', str(error))
+            raise
+        return {'run_id': child, 'session_id': internal, 'status': 'submitted'}
+
+    def run_status(self, execution, run_id):
+        row = self.store.one('SELECT * FROM runs WHERE id=?', (run_id,))
+        if not row:
+            raise ValueError('Unknown run')
+        session = self.store.one('SELECT * FROM sessions WHERE id=?', (row['session_id'],))
+        caller = execution['profile'].id
+        if row['session_id'] != execution['session_id'] and session['participant_a_id'] != caller:
+            raise PermissionError('Run is not accessible to this agent')
+        messages = self.store.rows("SELECT content FROM messages WHERE session_id=? AND sender_id=? ORDER BY id DESC LIMIT 1",
+                                   (row['session_id'], row['agent_id']))
+        return {'run_id': run_id, 'session_id': row['session_id'], 'status': row['status'],
+                'error': row['error'], 'latest_session_result': messages[0]['content'] if messages else None}
 
     def recover_interrupted(self):
         # Never replay uncertain external side effects automatically.
